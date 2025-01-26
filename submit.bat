@@ -1,0 +1,1 @@
+scp -P 102 target/dns-situation-1.0-SNAPSHOT.jar  root@ccmserver:~/tasks/
