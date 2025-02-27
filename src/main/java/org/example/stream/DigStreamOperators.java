@@ -2,15 +2,17 @@ package org.example.stream;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.util.Collector;
+import org.example.datasource.CredDataSource;
 import org.example.entity.DomainResolveResult;
+import org.example.entity.DomainSituation;
 
 import java.util.List;
 import java.util.Map;
 
-public class StreamOperators {
+public class DigStreamOperators {
 
     // Dig报文清洗算子
     public static class digCleanFlatMap implements FlatMapFunction<String, DomainResolveResult> {
@@ -32,14 +34,17 @@ public class StreamOperators {
 
             for(Map<String, Object> answer :  answers)
             {
+                String rawDomainName = (String) answer.get("name"); // 记录中的原始域名,以.结尾，如baidu.com.
+                String domain = rawDomainName.substring(0, rawDomainName.length()-1);   // 去掉最后一个字符. 以匹配可信数据库
+
                 collector.collect(
                         new DomainResolveResult(
                                 (String) payload.get("timestamp"),
                                 (String) payload.get("city"),
                                 (String) payload.get("resolver"),
-                                (String) answer.get("domain"),
+                                domain,
                                 (String) answer.get("type"),
-                                (String) answer.get("answer"),
+                                (String) answer.get("data"),
                                 (Integer) answer.get("ttl")
                         )
                 );
@@ -47,6 +52,39 @@ public class StreamOperators {
         }
     }
 
-    public static class digMap implements MapFunction<> {}
+    public static class digMap implements MapFunction<DomainResolveResult, DomainSituation> {
+        @Override
+        public DomainSituation map(DomainResolveResult domainResolveResult) throws Exception {
+            List<String> creds = CredDataSource.getCreds(domainResolveResult.domain, domainResolveResult.type);
+            return new DomainSituation(
+                    domainResolveResult.timestamp,
+                    domainResolveResult.city,
+                    domainResolveResult.resolver,
+                    domainResolveResult.domain,
+                    domainResolveResult.type,
+                    1,
+                    creds.size(),
+                    creds.contains(domainResolveResult.answer)? 1:0
+
+            );
+        }
+    }
+
+    public static class digReduce implements ReduceFunction<DomainSituation> {
+
+        @Override
+        public DomainSituation reduce(DomainSituation t1, DomainSituation t2) throws Exception {
+            return new DomainSituation(
+                    t1.timestamp,
+                    t1.city,
+                    t1.resolver,
+                    t1.domain,
+                    t1.type,
+                    t1.total_answers + t2.total_answers,
+                    t1.total_creds,
+                    t1.true_answers + t2.true_answers
+            );
+        }
+    }
 
 }

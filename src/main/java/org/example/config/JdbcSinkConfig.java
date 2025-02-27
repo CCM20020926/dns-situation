@@ -25,13 +25,13 @@ public class JdbcSinkConfig {
             throw new RuntimeException(e);
         }
 
-        connectionOptions = new JdbcConnectionOptions.JdbcConnectionOptionsBuilder().withDriverName(props.getProperty("jdbc.driver")).withUrl(props.getProperty("jdbc.url"))
-                .withUsername(props.getProperty("jdbc.user")).withPassword(props.getProperty("jdbc.password")).build();
+        connectionOptions = new JdbcConnectionOptions.JdbcConnectionOptionsBuilder().withDriverName(props.getProperty("jdbc.sink.driver")).withUrl(props.getProperty("jdbc.sink.url"))
+                .withUsername(props.getProperty("jdbc.sink.user")).withPassword(props.getProperty("jdbc.sink.password")).build();
 
         executionOptions = JdbcExecutionOptions.builder().
-                withBatchSize(Integer.parseInt(props.getProperty("jdbc.batchSize")))
-                .withBatchIntervalMs(Integer.parseInt(props.getProperty("jdbc.batchIntervalMs")))
-                .withMaxRetries(Integer.parseInt(props.getProperty("jdbc.maxRetries")))
+                withBatchSize(Integer.parseInt(props.getProperty("jdbc.sink.batchSize")))
+                .withBatchIntervalMs(Integer.parseInt(props.getProperty("jdbc.sink.batchIntervalMs")))
+                .withMaxRetries(Integer.parseInt(props.getProperty("jdbc.sink.maxRetries")))
                 .build();
     }
 
